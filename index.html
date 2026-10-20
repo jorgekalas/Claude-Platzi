@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perseverance 3D</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+  <!-- Import map: le dice al navegador de dónde descargar Three.js -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ===== 1. ESCENA =====
+    // La escena es el "mundo" donde ponemos todos los objetos.
+    const escena = new THREE.Scene();
+
+    // Cielo marciano: color caramelo-polvoriento
+    const colorCielo = new THREE.Color(0xd8a47f);
+    escena.background = colorCielo;
+    // Niebla: el polvo hace que lo lejano se pierda en el horizonte
+    escena.fog = new THREE.Fog(colorCielo, 40, 180);
+
+    // ===== 2. CÁMARA =====
+    // (ángulo de visión, proporción de la pantalla, distancia mínima, distancia máxima)
+    const camara = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 500);
+    camara.position.set(8, 5, 10);
+
+    // ===== 3. RENDERIZADOR =====
+    // Dibuja la escena en un <canvas> dentro de la página
+    const renderizador = new THREE.WebGLRenderer({ antialias: true });
+    renderizador.setSize(innerWidth, innerHeight);
+    renderizador.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderizador.shadowMap.enabled = true;
+    document.body.appendChild(renderizador.domElement);
+
+    // ===== 4. LUCES =====
+    // Luz ambiental: ilumina todo un poco, con tono rojizo de Marte
+    const luzAmbiente = new THREE.HemisphereLight(0xffd8b0, 0x6b2e1a, 0.8);
+    escena.add(luzAmbiente);
+
+    // El Sol: luz direccional que proyecta sombras
+    const sol = new THREE.DirectionalLight(0xfff1e0, 2);
+    sol.position.set(30, 40, 20);
+    sol.castShadow = true;
+    sol.shadow.mapSize.set(2048, 2048);
+    sol.shadow.camera.left = -30;
+    sol.shadow.camera.right = 30;
+    sol.shadow.camera.top = 30;
+    sol.shadow.camera.bottom = -30;
+    escena.add(sol);
+
+    // ===== 5. SUELO (temporal) =====
+    // Un piso plano para orientarnos. En el paso 2 lo cambiamos por terreno marciano.
+    const suelo = new THREE.Mesh(
+      new THREE.PlaneGeometry(400, 400),
+      new THREE.MeshStandardMaterial({ color: 0xb5562b, roughness: 1 })
+    );
+    suelo.rotation.x = -Math.PI / 2; // lo acostamos
+    suelo.receiveShadow = true;
+    escena.add(suelo);
+
+    // Cuadrícula de referencia (cada cuadro = 1 metro)
+    const cuadricula = new THREE.GridHelper(40, 40, 0x7a2f12, 0x8f4020);
+    cuadricula.position.y = 0.01;
+    escena.add(cuadricula);
+
+    // Caja de prueba del tamaño de Perseverance (3 x 2.2 x 2.7 m)
+    const cajaPrueba = new THREE.Mesh(
+      new THREE.BoxGeometry(3, 2.2, 2.7),
+      new THREE.MeshStandardMaterial({ color: 0xeeeeee })
+    );
+    cajaPrueba.position.y = 1.1;
+    cajaPrueba.castShadow = true;
+    escena.add(cajaPrueba);
+
+    // ===== 6. CONTROLES =====
+    // Arrastra para girar, rueda del mouse para zoom, clic derecho para mover
+    const controles = new OrbitControls(camara, renderizador.domElement);
+    controles.target.set(0, 1, 0);
+    controles.enableDamping = true;
+    controles.maxPolarAngle = Math.PI / 2 - 0.05; // no dejar que la cámara pase bajo el suelo
+
+    // ===== 7. AJUSTAR AL TAMAÑO DE LA VENTANA =====
+    addEventListener('resize', () => {
+      camara.aspect = innerWidth / innerHeight;
+      camara.updateProjectionMatrix();
+      renderizador.setSize(innerWidth, innerHeight);
+    });
+
+    // ===== 8. CICLO DE ANIMACIÓN =====
+    // Se repite unas 60 veces por segundo
+    function animar() {
+      requestAnimationFrame(animar);
+      controles.update();
+      renderizador.render(escena, camara);
+    }
+    animar();
+  </script>
+</body>
+</html>
